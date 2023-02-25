@@ -91,7 +91,7 @@ class DataAccess {
                         const itemDoc = await getDoc(itemRef);
                         if (itemDoc.data().stock >= item.quantity) {
                             await transaction.update(itemRef, {
-                                "stock": increment(-1 * item.quantity)
+                                "stock": itemDoc.data().stock - item.quantity
                             });
                             await transaction.update(shipmentRef, {
                                 contents: arrayUnion(item)

@@ -1,4 +1,4 @@
-import { dataAccess } from "../dataAcess";
+import { dataAccess } from "../DataAccess";
 
 export async function addItem(item: ItemModel) {
     return await dataAccess.postItem(item);

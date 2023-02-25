@@ -1,4 +1,4 @@
-import { dataAccess } from "../dataAcess";
+import { dataAccess } from "../DataAccess";
 
 export async function postShipment(shipment: ShipmentModel) {
     return await dataAccess.createShipment(shipment.name, shipment.destination, shipment.contents);
