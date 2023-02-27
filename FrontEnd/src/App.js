@@ -182,6 +182,7 @@ export default function App() {
         console.log(responseJson);
         getShipments();
         resetShipment();
+        getInventory();
       })
   };
 

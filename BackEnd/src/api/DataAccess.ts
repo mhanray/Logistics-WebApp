@@ -85,23 +85,24 @@ class DataAccess {
                 let totalPrice = 0;
 
                 for (const item of contents) {
-                    const itemRef = await doc(this.inventory, item.name);
-                    const itemExists = await this.verifyExists(itemRef);
+                    const itemRef = await doc(this.inventory, item.name)
+                    const itemExists = await this.verifyExists(itemRef)
                     if (itemExists) {
-                        const itemDoc = await getDoc(itemRef);
-                        if (itemDoc.data().stock >= item.quantity) {
+                        const itemDoc = await getDoc(itemRef)
+                        const inventoryItem = itemDoc.data()
+                        if (inventoryItem.stock >= item.quantity) {
                             await transaction.update(itemRef, {
-                                "stock": itemDoc.data().stock - item.quantity
+                                "stock": inventoryItem.stock - item.quantity
                             });
                             await transaction.update(shipmentRef, {
                                 contents: arrayUnion(item)
                             });
-                            totalPrice += (itemDoc.data().price * item.quantity);
+                            totalPrice += (inventoryItem.price * item.quantity);
                         } else {
                             throw new Error(`${item.name} does not have enough stock.`);
                         }
                     } else {
-                        throw new Error(`${item.name} does exist in your inventory.`);
+                        throw new Error(`${item.name} does not exist in your inventory.`);
                     }
                 }
                 transaction.update(shipmentRef, {

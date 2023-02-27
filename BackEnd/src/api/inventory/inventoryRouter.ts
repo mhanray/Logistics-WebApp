@@ -3,7 +3,7 @@ import { getInventory, addItem, deleteItem, updateItem, ItemModel, UpdateItemMod
 export const inventoryRouter = express.Router();
 
 // POST new item to inventory
-inventoryRouter.post("/", async (req,res) => {
+inventoryRouter.post("/", async (req, res) => {
     try {
         const itemInfo: ItemModel = req.body;
         const ret = await addItem(itemInfo);
@@ -14,7 +14,7 @@ inventoryRouter.post("/", async (req,res) => {
 });
 
 // GET all items in inventory
-inventoryRouter.get("/", async (req,res) => {
+inventoryRouter.get("/", async (req, res) => {
     try {
         const inventoryData = await getInventory()
         res.status(200).json(inventoryData);
@@ -24,7 +24,7 @@ inventoryRouter.get("/", async (req,res) => {
 });
 
 // PATCH provided fields for item
-inventoryRouter.patch("/", async (req,res) => {
+inventoryRouter.patch("/", async (req, res) => {
     try {
         const itemInfo: UpdateItemModel = req.body;
         const ret = await updateItem(itemInfo);
