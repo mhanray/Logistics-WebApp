@@ -17,9 +17,12 @@ export default function App() {
   const [shipmentName, setShipmentName] = useState("")
   const [shipmentDestination, setShipmentDestination] = useState("")
 
-  useEffect(async () => {
-    await getInventory();
-    await getShipments();
+  useEffect(() => {
+    async function fetchData() {
+      await getInventory();
+      await getShipments();
+    }
+    fetchData();
   }, []);
 
   const resetItem = () => {
