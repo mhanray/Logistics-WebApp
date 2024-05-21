@@ -1,85 +1,71 @@
 import React, { useState, useEffect } from "react";
-import './App.css';
-import { Row, Container, Button, Table, Form, ButtonGroup, Col } from 'react-bootstrap'
-import 'bootstrap/dist/css/bootstrap.min.css';
+import "./App.css";
+import { Container, Button, ButtonGroup, Col } from "react-bootstrap";
+import "bootstrap/dist/css/bootstrap.min.css";
+import { InventoryTable } from "./components/InventoryTable";
+import { ItemForm } from "./components/InventoryForm";
+import { ShipmentTable } from "./components/ShipmentTable";
+import { ShipmentForm } from "./components/ShipmentForm";
+import { api } from "./services/api";
 
 export default function App() {
-  const [inventory, setInventory] = useState([])
+  const [inventory, setInventory] = useState([]);
   const [item, setItem] = useState({
     name: "",
     department: "",
     price: "",
     stock: "",
-    description: ""
+    description: "",
   });
-  const [shipments, setShipments] = useState([])
-  const [shipmentContents, setShipmentContents] = useState([{ name: "", quantity: "" }])
-  const [shipmentName, setShipmentName] = useState("")
-  const [shipmentDestination, setShipmentDestination] = useState("")
+  const [shipments, setShipments] = useState([]);
+  const [shipmentContents, setShipmentContents] = useState([
+    { name: "", quantity: "" },
+  ]);
+  const [shipmentName, setShipmentName] = useState("");
+  const [shipmentDestination, setShipmentDestination] = useState("");
 
   useEffect(() => {
     async function fetchData() {
-      await getInventory();
-      await getShipments();
+      await Promise.all([getInventory(), getShipments()]);
     }
     fetchData();
   }, []);
 
-  const resetItem = () => {
+  function resetItem() {
     setItem({
       name: "",
       department: "",
       price: "",
       stock: "",
-      description: ""
+      description: "",
     });
   }
 
-  const resetShipment = () => {
-    setShipmentName("")
-    setShipmentDestination("")
-    setShipmentContents([{ name: "", quantity: "" }])
+  function resetShipment() {
+    setShipmentName("");
+    setShipmentDestination("");
+    setShipmentContents([{ name: "", quantity: "" }]);
   }
 
   const addItem = async () => {
     if (item.name === "") {
-      alert("Item name cannot be empty.")
+      alert("Item name cannot be empty.");
       return;
     }
-    fetch("http://localhost:8080/inventory", {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(item)
-    })
-      .then((response) => {
-        if (!response.ok) {
-          response.text().then(text => {
-            alert(`Error adding item to inventory.\n${text}`)
-          });
-        }
-        return response.text()
-      })
-      .then((responseJson) => {
-        console.log(responseJson);
-        getInventory();
-        resetItem();
-      });
+    try {
+      const responseJson = await api.addItem(item);
+
+      console.log(responseJson);
+      getInventory();
+      resetItem();
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   const getInventory = async () => {
-    fetch("http://localhost:8080/inventory")
-      .then((response) => {
-        if (!response.ok) {
-          response.text().then(text => {
-            alert(`Error getting inventory.\n${text}`)
-            return;
-          })
-        }
-        return response.json()
-      })
-      .then((responseJson) => setInventory(responseJson));
+    const responseJson = await api.getInventory();
+    setInventory(responseJson);
   };
 
   const updateItem = async () => {
@@ -90,125 +76,90 @@ export default function App() {
 
     const updatedItem = {
       name: item.name,
-      fields: Object.assign({}, {
-        department: item.department === "" ? null : item.department,
-        price: item.price === "" ? null : Number(item.price),
-        stock: item.stock === "" ? null : Number(item.stock),
-        description: item.description === "" ? null : item.description
-      })
-    }
+      fields: Object.assign(
+        {},
+        {
+          department: item.department === "" ? null : item.department,
+          price: item.price === "" ? null : Number(item.price),
+          stock: item.stock === "" ? null : Number(item.stock),
+          description: item.description === "" ? null : item.description,
+        }
+      ),
+    };
     for (var field in updatedItem.fields) {
       if (updatedItem.fields[field] === null) {
-        delete updatedItem.fields[field]
+        delete updatedItem.fields[field];
       }
     }
+    try {
+      const responseJson = await api.updateItem(updatedItem);
 
-
-    fetch("http://localhost:8080/inventory", {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(updatedItem)
-    })
-      .then((response) => {
-        if (!response.ok) {
-          response.text().then(text => {
-            alert(`Error updating item in inventory.\n${text}`)
-            return;
-          });
-        }
-        return response.json()
-      })
-      .then((responseJson) => {
-        console.log(responseJson);
-        getInventory();
-        resetItem();
-      });
-  }
+      console.log(responseJson);
+      getInventory();
+      resetItem();
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
   const deleteItem = async () => {
     if (item.name === "") {
-      alert("Item name cannot be empty.")
+      alert("Item name cannot be empty.");
       return;
     }
+    try {
+      const responseJson = await api.deleteItem(item.name);
 
-    fetch(`http://localhost:8080/inventory/?name=${item.name}`, {
-      method: 'DELETE',
-    })
-      .then((response) => {
-        if (!response.ok) {
-          response.text().then(text => {
-            alert(`Error deleting item in inventory.\n${text}`)
-          });
+      console.log(responseJson);
+      getInventory();
+      resetItem();
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const createShipment = async () => {
+    try {
+      const updatedContents = [];
+
+      shipmentContents.forEach((shipmentItem) => {
+        const updatedItem = {
+          name: shipmentItem.name,
+          quantity: Number(shipmentItem.quantity),
+        };
+
+        if (updatedItem.quantity < 1) {
+          alert("Shipment contents have to be more than zero.");
+          throw new Error("Shipment contents have to be more than zero.");
         }
-        return response.json()
-      })
-      .then((responseJson) => {
-        console.log(responseJson);
-        getInventory();
-        resetItem();
+        updatedContents.push();
       });
-  }
 
-  const createShipment = () => {
-    const updatedContents = shipmentContents.map((item) => {
-      return {
-        name: item.name,
-        quantity: Number(item.quantity)
-      }
-    });
+      const shipment = {
+        name: shipmentName,
+        destination: shipmentDestination,
+        contents: updatedContents,
+      };
 
-    const shipment = {
-      name: shipmentName,
-      destination: shipmentDestination,
-      contents: updatedContents
-    };
+      const responseJson = await api.createShipment(shipment);
 
-    fetch("http://localhost:8080/shipments", {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(shipment)
-    })
-      .then((response) => {
-        if (!response.ok) {
-          response.text().then(text => {
-            alert(`Error creating shipment.\n${text}`)
-            return;
-          });
-        }
-        return response.json()
-      })
-      .then((responseJson) => {
-        console.log(responseJson);
-        getShipments();
-        resetShipment();
-        getInventory();
-      })
+      console.log(responseJson);
+      getShipments();
+      resetShipment();
+      getInventory();
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   const getShipments = async () => {
-    fetch("http://localhost:8080/shipments")
-      .then((response) => {
-        if (!response.ok) {
-          response.text().then(text => {
-            alert(`Error getting shipments.\n${text}`)
-            return;
-          })
-        }
-        return response.json()
-      })
-      .then((responseJson) => setShipments(responseJson));
-  }
+    const responseJson = await api.getShipments();
+    setShipments(responseJson);
+  };
 
   const handleItemFormChange = (e) => {
     const { name, value } = e.target;
-    // if (name === 'price' && !/^[0-9]+(\.[0-9]+)?$/.test(value) && value !== '.') {
-    //   values[name] = +value;
-    //   setProduct(values);
-    // }
+
     setItem({ ...item, [name]: value });
   };
 
@@ -219,224 +170,78 @@ export default function App() {
     setShipmentContents(currentContents);
   };
 
-  const addItemtoShipmentForm = () => {
+  function addItemtoShipmentForm() {
     setShipmentContents([...shipmentContents, { name: "", quantity: 0 }]);
-  };
+  }
 
-  const removeItemfromShipmentForm = (i) => {
+  const removeItemFromShipmentForm = (i) => {
     let shipment = [...shipmentContents];
+    if (shipment.length <= 1) {
+      alert("Can't remove the last item in a shipment.");
+      return;
+    }
     shipment.splice(i, 1);
     setShipmentContents(shipment);
   };
 
-  const inventoryRows = inventory.map((item) => {
-    return (
-      <tr key={item.name}>
-        <td>{item.name}</td>
-        <td>{item.department}</td>
-        <td>{item.stock}</td>
-        <td>{item.price}</td>
-        <td>{item.description}</td>
-      </tr>
-    )
-  });
-
-  const shipmentRows = shipments.map((shipment) => {
-    let contentsString = shipment.contents.map((item) => {
-      return ` ${item.quantity} ${item.name};`
-    })
-    return (
-      <tr key={shipment.name}>
-        <td>{shipment.name}</td>
-        <td>{shipment.destination}</td>
-        <td>{shipment.price}</td>
-        <td>{contentsString.join('')}</td>
-      </tr>
-    )
-  });
-
-  const shipmentContentsForm = shipmentContents.map((item, i) => {
-    return (
-      <Form.Group as={Row} key={i} className="mb-3">
-        <Col sm={2}>
-          <Form.Label>Item Name</Form.Label >
-        </Col>
-        <Col >
-          <Form.Control
-            name="name"
-            value={item.name}
-            onChange={e => handleShipmentFormChange(e, i)}
-          />
-        </Col>
-        <Col sm={2}>
-          <Form.Label>Quantity</Form.Label >
-        </Col>
-        <Col  >
-          <Form.Control
-            type="number"
-            name="quantity"
-            value={item.quantity}
-            onChange={e => handleShipmentFormChange(e, i)}
-          />
-        </Col>
-
-        {
-          i ?
-            <Col sm={1}>
-              <Button className="mb-3" onClick={() => removeItemfromShipmentForm(i)}>Remove</Button>
-            </Col>
-            : null
-        }
-
-      </Form.Group>
-
-    )
-  });
-
   return (
-    <div className="App">
+    <Container className="App">
       <h1> Logical Logistics </h1>
       <h2> Manage Inventory</h2>
       <Button variant="outline-primary" onClick={getInventory} className="mb-3">
         Update Inventory
       </Button>
-      <Table striped bordered hover >
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Department</th>
-            <th>Stock</th>
-            <th>Price</th>
-            <th>Description</th>
-          </tr>
-        </thead>
-        <tbody>
-          {inventoryRows}
-        </tbody>
-      </Table>
+      <InventoryTable inventory={inventory} />
+
       <h3>Modify Items</h3>
       <Container as={Col} md={6} className="justify-content-md-center">
-        <Form>
-          <Form.Group as={Row} className="mb-3">
-            <Col sm={2}>
-              <Form.Label >Name</Form.Label>
-            </Col>
-            <Col sm={10}>
-              <Form.Control
-                type="text"
-                name="name"
-                value={item.name}
-                onChange={e => handleItemFormChange(e)}
-              />
-            </Col>
-          </Form.Group>
-          <Form.Group as={Row} className="mb-3">
-            <Col sm={2}>
-              <Form.Label sm={2}>Department</Form.Label>
-            </Col>
-
-            <Col sm={10}>
-              <Form.Control
-                type="text"
-                name="department"
-                value={item.department}
-                onChange={e => handleItemFormChange(e)}
-              />
-            </Col>
-          </Form.Group>
-          <Form.Group as={Row} className="mb-3">
-            <Col sm={2}>
-              <Form.Label >Price</Form.Label>
-            </Col>
-            <Col sm={10}>
-              <Form.Control
-                type="number"
-                name="price"
-                value={item.price}
-                onChange={e => handleItemFormChange(e)}
-              />
-            </Col>
-          </Form.Group>
-          <Form.Group as={Row} className="mb-3">
-            <Col sm={2}>
-              <Form.Label >Stock</Form.Label>
-            </Col>
-            <Col sm={10}>
-              <Form.Control
-                type="number"
-                name="stock"
-                value={item.stock}
-                onChange={e => handleItemFormChange(e)}
-              />
-            </Col>
-          </Form.Group>
-          <Form.Group as={Row} className="mb-3">
-            <Col sm={2}>
-              <Form.Label >Description</Form.Label>
-            </Col>
-            <Col sm={10}>
-              <Form.Control
-                type="text"
-                name="description"
-                value={item.description}
-                onChange={e => handleItemFormChange(e)}
-              />
-            </Col>
-          </Form.Group>
-        </Form>
+        <ItemForm item={item} handleItemFormChange={handleItemFormChange} />
       </Container>
       <ButtonGroup className="mb-3">
-        <Button variant="outline-success" onClick={addItem}> Add Item</Button>
-        <Button variant="outline-primary" onClick={updateItem}> Update Item </Button>
-        <Button variant="outline-danger" onClick={deleteItem}> Delete Item </Button>
+        <Button variant="outline-success" onClick={addItem}>
+          {" "}
+          Add Item
+        </Button>
+        <Button variant="outline-primary" onClick={updateItem}>
+          {" "}
+          Update Item{" "}
+        </Button>
+        <Button variant="outline-danger" onClick={deleteItem}>
+          {" "}
+          Delete Item{" "}
+        </Button>
       </ButtonGroup>
 
       <h2>Manage Shipments</h2>
       <Button variant="outline-primary" onClick={getShipments} className="mb-3">
         Update Shipments
       </Button>
-      <Table striped bordered hover>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Destination</th>
-            <th>Total Price</th>
-            <th>Contents</th>
-          </tr>
-        </thead>
-        <tbody>
-          {shipmentRows}
-        </tbody>
-      </Table>
+
+      <ShipmentTable shipments={shipments} />
+
       <h3>Modify Shipments</h3>
       <Container as={Col} md={8} className="justify-content-md-center">
-        <Form >
-          <Row className="mb-3">
-            <Form.Group as={Col} sm={6} className="mb-3">
-              <Form.Label>Shipment Name</Form.Label>
-              <Form.Control
-                type="text"
-                value={shipmentName}
-                onChange={e => setShipmentName(e.target.value)}
-              />
-            </Form.Group>
-            <Form.Group as={Col} sm={6} className="mb-3">
-              <Form.Label>Destination</Form.Label>
-              <Form.Control
-                type="text"
-                value={shipmentDestination}
-                onChange={e => setShipmentDestination(e.target.value)}
-              />
-            </Form.Group>
-          </Row>
-          {shipmentContentsForm}
-        </Form>
-
+        <ShipmentForm
+          shipmentName={shipmentName}
+          shipmentDestination={shipmentDestination}
+          shipmentContents={shipmentContents}
+          setShipmentName={setShipmentName}
+          setShipmentDestination={setShipmentDestination}
+          handleShipmentFormChange={handleShipmentFormChange}
+          removeItemFromShipmentForm={removeItemFromShipmentForm}
+        />
       </Container>
-      <ButtonGroup >
-        <Button variant="outline-primary" onClick={() => addItemtoShipmentForm()}>Add Item</Button>
-        <Button variant="outline-success" onClick={() => createShipment()}>Create Shipment</Button>
+      <ButtonGroup>
+        <Button
+          variant="outline-primary"
+          onClick={() => addItemtoShipmentForm()}
+        >
+          Add Item
+        </Button>
+        <Button variant="outline-success" onClick={() => createShipment()}>
+          Create Shipment
+        </Button>
       </ButtonGroup>
-    </div>
-  )
-};
+    </Container>
+  );
+}
